@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvTrack Pro - Inventaris & Pelacakan GPS Barcode</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- JsBarcode for Barcode Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- QRCode.js for QR Code Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-[1000]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Editable Brand Area -->
+                <div onclick="openBrandingModal()" class="flex items-center space-x-3 group relative cursor-pointer hover:bg-slate-800/50 p-1.5 rounded-xl transition duration-200" title="Klik untuk edit logo & nama aplikasi">
+                    <div id="header-logo-container" class="w-10 h-10 bg-indigo-600 rounded-lg text-white flex items-center justify-center overflow-hidden">
+                        <i class="fa-solid fa-boxes-stacked text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg tracking-wider block" id="header-title-container">InvTrack <span class="text-indigo-400">Pro</span></span>
+                        <span class="text-xs text-slate-400 block -mt-1" id="header-tagline-container">Inventaris & GPS Tracking</span>
+                    </div>
+                    <!-- Edit overlay indicator -->
+                    <div class="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all text-indigo-400 bg-slate-800 p-1 rounded-full text-[10px] shadow border border-slate-700">
+                        <i class="fa-solid fa-pen"></i>
+                    </div>
+                </div>
+                
+                <nav class="hidden md:flex space-x-2">
+                    <button onclick="switchTab('dashboard')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 bg-slate-800 text-white" id="btn-dashboard">
+                        <i class="fa-solid fa-chart-line mr-2"></i>Dasbor
+                    </button>
+                    <button onclick="switchTab('inventory')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-inventory">
+                        <i class="fa-solid fa-list mr-2"></i>Daftar Barang
+                    </button>
+                    <button onclick="switchTab('tracker')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-tracker">
+                        <i class="fa-solid fa-barcode mr-2"></i>Scan & Track
+                    </button>
+                    <button onclick="switchTab('map-view')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:bg-slate-800 hover:text-white" id="btn-map-view">
+                        <i class="fa-solid fa-map-location-dot mr-2"></i>Peta Global
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- MOBILE NAVIGATION (BOTTOM BAR) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 text-white z-[1000] flex justify-around py-2">
+        <button onclick="switchTab('dashboard')" class="mobile-tab-btn flex flex-col items-center space-y-1 text-indigo-400" id="m-btn-dashboard">
+            <i class="fa-solid fa-chart-line text-lg"></i>
+            <span class="text-[10px]">Dasbor</span>
+        </button>
+        <button onclick="switchTab('inventory')" class="mobile-tab-btn flex flex-col items-center space-y-1 text-slate-400" id="m-btn-inventory">
+            <i class="fa-solid fa-list text-lg"></i>
+            <span class="text-[10px]">Barang</span>
+        </button>
+        <button onclick="switchTab('tracker')" class="mobile-tab-btn flex flex-col items-center space-y-1 text-slate-400" id="m-btn-tracker">
+            <i class="fa-solid fa-barcode text-lg"></i>
+            <span class="text-[10px]">Scan</span>
+        </button>
+        <button onclick="switchTab('map-view')" class="mobile-tab-btn flex flex-col items-center space-y-1 text-slate-400" id="m-btn-map-view">
+            <i class="fa-solid fa-map-location-dot text-lg"></i>
+            <span class="text-[10px]">Peta</span>
+        </button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
+
+        <!-- NOTIFICATION TOAST CONTAINER -->
+        <div id="toast" class="fixed top-20 right-4 z-[9999] transform translate-y-[-100px] opacity-0 transition-all duration-300 pointer-events-none">
+            <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border-l-4 border-indigo-500">
+                <span id="toast-icon" class="text-indigo-400"><i class="fa-solid fa-circle-info"></i></span>
+                <span id="toast-message" class="text-sm font-medium">Pemberitahuan Sistem</span>
+            </div>
+        </div>
+
+        <!-- TAB: DASHBOARD -->
+        <section id="tab-dashboard" class="space-y-6">
+            <!-- Hero Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 text-sm font-medium">Total Inventaris</span>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stat-total">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-box"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 text-sm font-medium">Dalam Pengiriman / Bergerak</span>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stat-moving">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-truck-ramp-box"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 text-sm font-medium">Lokasi Aktif Terlacak</span>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stat-locations">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 text-sm font-medium">Stok Kritis (<5)</span>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stat-low">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Map & Fast Actions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Map Overview Widget -->
+                <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-lg text-slate-800">Visualisasi Sebaran Aset (GPS)</h2>
+                        <span class="text-xs text-indigo-600 font-semibold cursor-pointer hover:underline" onclick="switchTab('map-view')">Lihat Peta Penuh &rarr;</span>
+                    </div>
+                    <div id="dash-map" class="h-80 w-full rounded-xl border border-slate-200 z-10"></div>
+                </div>
+
+                <!-- Recent Actions -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h2 class="font-bold text-lg text-slate-800 mb-4">Aksi Cepat</h2>
+                        <div class="space-y-3">
+                            <button onclick="openAddModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center space-x-2 text-sm shadow-md">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Tambah Barang Baru</span>
+                            </button>
+                            <button onclick="switchTab('tracker')" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center space-x-2 text-sm shadow-md">
+                                <i class="fa-solid fa-qrcode"></i>
+                                <span>Pindai / Lacak Barang</span>
+                            </button>
+                            <button onclick="openBrandingModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center space-x-2 text-sm">
+                                <i class="fa-solid fa-palette text-indigo-600"></i>
+                                <span>Edit Logo & Nama App</span>
+                            </button>
+                            <button onclick="seedDummyData()" class="w-full border-2 border-dashed border-indigo-200 hover:border-indigo-400 text-indigo-600 font-medium py-2 px-4 rounded-xl transition duration-200 text-xs">
+                                <i class="fa-solid fa-database mr-2"></i>Isi Data Simulasi (Dummy)
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-slate-100 pt-4 mt-4">
+                        <h3 class="font-bold text-sm text-slate-700 mb-2">Sinkronisasi GPS Terkalibrasi</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Aplikasi menggunakan decoding data sensor presisi dari barcode/QR code untuk menentukan titik koordinat GPS riil barang secara akurat di atas peta interaktif.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: INVENTORY LIST -->
+        <section id="tab-inventory" class="space-y-6 hidden">
+            <!-- Controls & Filters -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="relative flex-grow max-w-md">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="inventory-search" oninput="renderInventory()" placeholder="Cari SKU, nama barang, atau kategori..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition">
+                </div>
+                <div class="flex items-center space-x-2 self-end md:self-auto">
+                    <!-- Dynamic status filter dropdown -->
+                    <select id="filter-status" onchange="renderInventory()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                    <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-xl text-sm flex items-center space-x-2 transition shadow-sm">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="hidden sm:inline">Tambah Barang</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
+                                <th class="py-4 px-6">Info Barang</th>
+                                <th class="py-4 px-6">SKU / Kode</th>
+                                <th class="py-4 px-6">Kategori</th>
+                                <th class="py-4 px-6 text-center">Stok</th>
+                                <th class="py-4 px-6">Status (Edit Langsung)</th>
+                                <th class="py-4 px-6">Koordinat GPS Terkalibrasi</th>
+                                <th class="py-4 px-6 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm text-slate-600">
+                            <!-- Populated by JavaScript -->
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-400">
+                                    <div class="flex flex-col items-center justify-center space-y-2">
+                                        <i class="fa-solid fa-box-open text-3xl"></i>
+                                        <span>Belum ada data inventaris. Tambah barang baru atau gunakan data dummy.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: TRACKER (BARCODE SCANNER & DETAILS) -->
+        <section id="tab-tracker" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Scan Simulator and Input -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between space-y-6">
+                    <div>
+                        <h2 class="font-bold text-lg text-slate-800">Pelacakan SKU & Pindai Barcode</h2>
+                        <p class="text-xs text-slate-400 mt-1">Masukkan SKU barang atau simulasikan pemindaian kamera di bawah ini.</p>
+                        
+                        <!-- Manual Search Input -->
+                        <div class="mt-6 space-y-3">
+                            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Cari Berdasarkan SKU</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="tracking-input" placeholder="Contoh: ID-LAP-001" class="flex-grow border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+                                <button onclick="trackItemByInput()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl transition duration-200 flex items-center justify-center" title="Lacak dari database">
+                                    <i class="fa-solid fa-location-crosshairs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scan Barcode Payload Input (Simulasi Pembacaan Scan Kamera) -->
+                        <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                            <label class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">Simulasi Baca Barcode Fisik (Raw Data)</label>
+                            <span class="text-[10px] text-slate-400 block">Tempel raw data barcode/QR untuk dekode koordinat instan:</span>
+                            <div class="flex space-x-1">
+                                <input type="text" id="barcode-raw-input" placeholder="SKU:ID-LAP-001|GPS:-6.2088,106.8456" class="flex-grow text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none font-mono">
+                                <button onclick="decodeAndTrackRawBarcode()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 rounded-lg transition font-medium">Dekode</button>
+                            </div>
+                        </div>
+
+                        <!-- Barcode Scanner Simulator Camera Frame -->
+                        <div class="mt-6">
+                            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Simulasi Scanner Kamera</label>
+                            <div class="relative bg-slate-900 aspect-video rounded-xl overflow-hidden flex flex-col items-center justify-center text-slate-400 text-center p-4">
+                                <!-- Laser Line Animation -->
+                                <div id="scanner-laser" class="absolute w-full h-[2px] bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)] top-0 left-0 hidden animate-pulse"></div>
+                                
+                                <i class="fa-solid fa-camera text-3xl mb-2 text-indigo-400"></i>
+                                <span class="text-xs font-medium px-4">Kamera Siap Mendeteksi</span>
+                                <span class="text-[10px] text-slate-500 max-w-xs mt-1">Sistem akan mengekstrak koordinat GPS eksak yang tertulis di dalam kode barcode</span>
+                                
+                                <button onclick="simulateScan()" class="mt-4 bg-slate-800 hover:bg-indigo-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition duration-200 border border-slate-700">
+                                    Simulasi Scan Acak
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- List of Quick Scans -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Klik cepat untuk lacak</span>
+                        <div class="max-h-48 overflow-y-auto space-y-2 pr-1" id="quick-track-list">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tracking Details Panel (Active Map + Info) -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col min-h-[500px]">
+                    <div id="tracking-result-placeholder" class="flex-grow flex flex-col items-center justify-center text-slate-400 text-center">
+                        <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-2xl text-slate-400 mb-3 animate-bounce">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-700">Belum Ada Barang yang Dilacak</h3>
+                        <p class="text-xs max-w-sm mt-1">Gunakan panel di sebelah kiri untuk memindai barcode atau memasukkan SKU guna menampilkan titik koordinat GPS yang akurat.</p>
+                    </div>
+
+                    <!-- Actual Tracking View (Hidden initially) -->
+                    <div id="tracking-result-content" class="hidden flex-col h-full space-y-6">
+                        <!-- Top details -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
+                            <div class="flex items-start space-x-3">
+                                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl text-xl mt-1">
+                                    <i class="fa-solid fa-location-arrow"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg text-slate-800" id="track-name">Nama Barang</h3>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-semibold font-mono" id="track-sku">SKU-100</span>
+                                        <span class="text-slate-400 text-xs" id="track-category">Elektronik</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 self-end sm:self-auto">
+                                <div class="text-right">
+                                    <span class="text-xs text-slate-400 block font-medium">Status Pengiriman</span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold" id="track-status">Transit</span>
+                                </div>
+                                <div class="h-10 w-px bg-slate-100"></div>
+                                <div class="text-center">
+                                    <span class="text-xs text-slate-400 block font-medium">Stok</span>
+                                    <span class="font-bold text-slate-800 text-sm" id="track-stock">0 Pcs</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grid: Map & Live Tracking Events -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+                            <!-- Leaflet Live Tracking Map -->
+                            <div class="md:col-span-2 flex flex-col space-y-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Lokasi GPS Terkalibrasi Akurat dari Kode Barcode</span>
+                                <div id="track-map" class="h-[300px] w-full rounded-xl border border-slate-200 z-10"></div>
+                                <div class="flex items-center justify-between text-xs text-slate-500 mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span class="flex items-center">
+                                        <i class="fa-solid fa-satellite text-indigo-600 mr-2 animate-pulse"></i>
+                                        <span>Koordinat Aktif: <b class="font-mono font-bold text-indigo-700 ml-1" id="track-coords">0, 0</b></span>
+                                    </span>
+                                    <button onclick="simulateGPSUpdate()" class="text-indigo-600 font-bold hover:underline hover:text-indigo-800 flex items-center">
+                                        <i class="fa-solid fa-arrows-rotate mr-1 animate-spin-slow"></i>
+                                        <span>Simulasikan Pergeseran GPS</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tracking Milestones/Logs -->
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Linimasa Pelacakan (Logs)</span>
+                                <div class="flex-grow overflow-y-auto max-h-[300px] relative border-l-2 border-indigo-100 pl-4 space-y-6" id="track-logs">
+                                    <!-- Log Steps will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: MAP VIEW (FULLSCREEN TRACKING) -->
+        <section id="tab-map-view" class="space-y-4 hidden">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="font-bold text-lg text-slate-800">Peta Pelacakan Multi-Aset</h2>
+                        <p class="text-xs text-slate-400">Seluruh aset yang terdaftar dan terintegrasi GPS dipetakan secara terpadu di bawah ini.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-indigo-600 rounded-full animate-ping"></span>
+                        <span class="text-xs font-semibold text-indigo-600">Pelacakan Posisi Aktif</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                <div id="full-map" class="h-[550px] w-full z-10"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+            <div class="flex items-center space-x-2">
+                <div id="footer-logo-container" class="w-6 h-6 bg-indigo-600 rounded text-white flex items-center justify-center text-[10px] overflow-hidden mr-1">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <span class="font-semibold text-white" id="footer-title-container">InvTrack Pro</span>
+                <span>&copy; 2026. Semua Hak Cipta Dilindungi.</span>
+            </div>
+            <div class="flex space-x-4">
+                <a href="#" class="hover:text-white transition">Panduan Sistem</a>
+                <a href="#" class="hover:text-white transition">Integrasi Barcode</a>
+                <a href="#" class="hover:text-white transition">API Pelacakan</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: ADD / EDIT INVENTORY -->
+    <div id="inventory-modal" class="fixed inset-0 bg-slate-900/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[90vh]" id="modal-container">
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-lg" id="modal-title">Tambah Barang Inventaris Baru</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <!-- Modal Body (Form) -->
+            <form id="item-form" onsubmit="saveItem(event)" class="overflow-y-auto p-6 space-y-4 flex-grow">
+                <input type="hidden" id="edit-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Kode SKU / Barcode</label>
+                        <div class="flex">
+                            <input type="text" id="form-sku" required placeholder="Contoh: ID-LAP-001" class="w-full border border-slate-200 rounded-l-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+                            <button type="button" onclick="generateRandomSKU()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 rounded-r-xl text-xs font-medium transition">Acak</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nama Barang</label>
+                        <input type="text" id="form-name" required placeholder="Contoh: Laptop Asus Vivobook" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Kategori</label>
+                        <select id="form-category" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Elektronik">Elektronik</option>
+                            <option value="Perabot Kantor">Perabot Kantor</option>
+                            <option value="Logistik">Logistik & Distribusi</option>
+                            <option value="Alat Medis">Alat Medis</option>
+                            <option value="Alat Berat">Alat Berat</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Jumlah Stok</label>
+                        <input type="number" id="form-stock" required min="1" placeholder="Masukkan jumlah" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status Lokasi</label>
+                        <select id="form-status" onchange="checkFormStatusCustom(this.value)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Tersimpan">Tersimpan di Gudang</option>
+                            <option value="Transit">Dalam Perjalanan (Transit)</option>
+                            <option value="Dipinjam">Sedang Digunakan</option>
+                            <option value="__custom__">Status Kustom...</option>
+                        </select>
+                    </div>
+                    <div id="form-status-custom-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tulis Status Kustom Baru</label>
+                        <input type="text" id="form-status-custom" placeholder="Misal: Dalam Perbaikan, Rusak" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Catatan Lokasi / Alamat</label>
+                        <input type="text" id="form-address" required placeholder="Contoh: Gudang B, Jakarta Timur" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- GPS Location Setting -->
+                <div class="border-t border-slate-100 pt-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Integrasi Koordinat GPS</label>
+                        <button type="button" onclick="getCurrentGPSLocation()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold text-xs px-3 py-1.5 rounded-lg transition duration-200 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-location-crosshairs"></i>
+                            <span>Dapatkan GPS Perangkat Saya</span>
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <span class="block text-[11px] text-slate-400 mb-1">Latitude</span>
+                            <input type="number" id="form-lat" step="any" required placeholder="-6.2088" class="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <span class="block text-[11px] text-slate-400 mb-1">Longitude</span>
+                            <input type="number" id="form-lng" step="any" required placeholder="106.8456" class="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Mini interactive Map to pick coordinates -->
+                    <div>
+                        <span class="block text-[11px] text-slate-400 mb-1">Klik pada peta di bawah ini untuk mengatur koordinat GPS alternatif:</span>
+                        <div id="modal-map" class="h-40 w-full rounded-xl border border-slate-200 z-10"></div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer Actions -->
+                <div class="flex items-center justify-end space-x-3 border-t border-slate-100 pt-4 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 text-sm font-medium transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-md">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SHOW BARCODE & QR CODE DETAILS FOR PRINTING -->
+    <div id="barcode-modal" class="fixed inset-0 bg-slate-900/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="barcode-modal-container">
+            <!-- Header -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-base">Barcode & QR Code Inventaris</h3>
+                <button onclick="closeBarcodeModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-6 flex flex-col items-center justify-center space-y-6 text-center">
+                <div>
+                    <h4 class="font-bold text-lg text-slate-800" id="barcode-modal-item-name">Nama Barang</h4>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-bold mt-1 inline-block font-mono" id="barcode-modal-sku">SKU BARANG</span>
+                </div>
+
+                <!-- Barcode Tab & QR Code Area -->
+                <div class="w-full space-y-4">
+                    <div class="bg-slate-50 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-100">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold mb-2">Barcode Tradisional (1D - Code128)</span>
+                        <svg id="barcode-svg" class="w-full max-w-[250px]"></svg>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-100">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold mb-2">QR Code Pelacakan (2D - GPS Terintegrasi)</span>
+                        <div id="qrcode-container" class="p-2 bg-white rounded-lg border border-slate-100"></div>
+                        <span class="text-[10px] text-slate-400 mt-2">QR Code berisi muatan string dekode:</span>
+                        <div id="qrcode-payload-view" class="text-[9px] font-mono bg-slate-900 text-emerald-400 p-2 rounded w-full text-left break-all select-all"></div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center space-x-3 w-full">
+                    <button onclick="printLabels()" class="flex-grow bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Cetak Label</span>
+                    </button>
+                    <button onclick="closeBarcodeModal()" class="flex-grow bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE CONFIRMATION -->
+    <div id="delete-modal" class="fixed inset-0 bg-slate-900/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="delete-modal-container">
+            <div class="p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto">
+                    <i class="fa-solid fa-trash-can animate-bounce"></i>
+                </div>
+                <h3 class="font-bold text-lg text-slate-800">Hapus Barang Inventaris?</h3>
+                <p class="text-sm text-slate-500">Apakah Anda yakin ingin menghapus barang <span id="delete-item-name" class="font-bold text-slate-800"></span>? Tindakan ini tidak dapat dibatalkan.</p>
+                <div class="flex items-center space-x-3 pt-2">
+                    <button onclick="closeDeleteModal()" class="flex-grow bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="flex-grow bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200 shadow-md">
+                        Ya, Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BRANDING SETTINGS -->
+    <div id="branding-modal" class="fixed inset-0 bg-slate-900/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="branding-modal-container">
+            <!-- Header -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-palette mr-2 text-indigo-400"></i>Pengaturan Logo & Nama Aplikasi</h3>
+                <button onclick="closeBrandingModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <!-- Body -->
+            <form onsubmit="saveBranding(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nama Aplikasi Utama</label>
+                    <input type="text" id="brand-name" required placeholder="Contoh: InvTrack" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Aksen / Akhiran Nama</label>
+                    <input type="text" id="brand-suffix" placeholder="Contoh: Pro" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Slogan / Tagline Sub-judul</label>
+                    <input type="text" id="brand-tagline" required placeholder="Contoh: Inventaris & GPS Tracking" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <!-- Logo Settings -->
+                <div class="border-t border-slate-100 pt-4 space-y-3">
+                    <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Jenis Logo</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center space-x-2 border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                            <input type="radio" name="logo-type" value="icon" checked onchange="toggleLogoForm()" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm font-medium text-slate-700">Gunakan Ikon Klasik</span>
+                        </label>
+                        <label class="flex items-center space-x-2 border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                            <input type="radio" name="logo-type" value="image" onchange="toggleLogoForm()" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm font-medium text-slate-700">Unggah Gambar Logo</span>
+                        </label>
+                    </div>
+
+                    <!-- Input Fields for Icon -->
+                    <div id="logo-icon-section" class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pilih Preset Ikon</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button type="button" onclick="selectPresetIcon('fa-solid fa-boxes-stacked')" class="p-2 border border-slate-200 rounded-xl hover:border-indigo-500 flex items-center justify-center text-slate-700"><i class="fa-solid fa-boxes-stacked text-lg"></i></button>
+                            <button type="button" onclick="selectPresetIcon('fa-solid fa-warehouse')" class="p-2 border border-slate-200 rounded-xl hover:border-indigo-500 flex items-center justify-center text-slate-700"><i class="fa-solid fa-warehouse text-lg"></i></button>
+                            <button type="button" onclick="selectPresetIcon('fa-solid fa-truck')" class="p-2 border border-slate-200 rounded-xl hover:border-indigo-500 flex items-center justify-center text-slate-700"><i class="fa-solid fa-truck text-lg"></i></button>
+                            <button type="button" onclick="selectPresetIcon('fa-solid fa-cubes')" class="p-2 border border-slate-200 rounded-xl hover:border-indigo-500 flex items-center justify-center text-slate-700"><i class="fa-solid fa-cubes text-lg"></i></button>
+                        </div>
+                        <div class="mt-2">
+                            <span class="block text-[11px] text-slate-400 mb-1">Atau masukkan class FontAwesome kustom:</span>
+                            <input type="text" id="brand-logo-icon" placeholder="fa-solid fa-boxes-stacked" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Input Fields for Image -->
+                    <div id="logo-image-section" class="space-y-3 hidden">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Unggah Berkas Gambar (PNG/JPG)</label>
+                        <input type="file" id="brand-logo-file" accept="image/*" onchange="handleBrandingImageUpload(event)" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <div class="mt-2">
+                            <span class="block text-[11px] text-slate-400 mb-1">Atau gunakan URL Gambar eksternal:</span>
+                            <input type="text" id="brand-logo-url" placeholder="https://example.com/logo.png" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="flex items-center space-x-3 pt-4 border-t border-slate-100 mt-6">
+                    <button type="button" onclick="closeBrandingModal()" class="flex-grow bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition shadow-md">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: PROMPT CUSTOM STATUS -->
+    <div id="status-prompt-modal" class="fixed inset-0 bg-slate-900/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="status-prompt-container">
+            <div class="p-6 space-y-4 text-center">
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl mx-auto">
+                    <i class="fa-solid fa-tag"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800">Ubah Status Kustom</h3>
+                    <p class="text-xs text-slate-400 mt-1">Masukkan nama status kustom baru untuk barang ini.</p>
+                </div>
+                <input type="text" id="custom-status-input" placeholder="Misal: Rusak, Diservis, Hilang" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-center font-semibold">
+                <div class="flex items-center space-x-3 pt-2">
+                    <button onclick="closeStatusPromptModal()" class="flex-grow bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200">
+                        Batal
+                    </button>
+                    <button onclick="submitCustomStatus()" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition duration-200 shadow-md">
+                        Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CORE SCRIPT LOGIC -->
+    <script>
+        // 1. Initial State Data (with high quality Indonesia locations for mapping visualization out of box)
+        let inventory = JSON.parse(localStorage.getItem('inv_items')) || [
+            {
+                id: '1',
+                sku: 'ID-LAP-001',
+                name: 'Laptop ASUS ROG Strix G15',
+                category: 'Elektronik',
+                stock: 12,
+                status: 'Tersimpan',
+                address: 'Gudang Utama A, Jakarta',
+                lat: -6.2088,
+                lng: 106.8456,
+                logs: [
+                    { time: '2026-06-18 09:30', info: 'Barang didaftarkan di sistem oleh Administrator Gudang.', lat: -6.2088, lng: 106.8456 },
+                    { time: '2026-06-20 10:00', info: 'Stok diperbarui menjadi 12 Pcs.', lat: -6.2088, lng: 106.8456 }
+                ]
+            },
+            {
+                id: '2',
+                sku: 'ID-SRV-202',
+                name: 'Server Dell PowerEdge R740',
+                category: 'Elektronik',
+                stock: 4,
+                status: 'Tersimpan',
+                address: 'Data Center Gedung Cyber, Jakarta',
+                lat: -6.2297,
+                lng: 106.8295,
+                logs: [
+                    { time: '2026-05-10 14:15', info: 'Instalasi server di rack baru.', lat: -6.2297, lng: 106.8295 }
+                ]
+            },
+            {
+                id: '3',
+                sku: 'ID-LOG-305',
+                name: 'Paket Cargo Alat Medis ICU',
+                category: 'Alat Medis',
+                stock: 45,
+                status: 'Transit',
+                address: 'Dalam Truk Kontainer - Tol Trans-Jawa Cirebon',
+                lat: -6.7220,
+                lng: 108.5555,
+                logs: [
+                    { time: '2026-06-19 08:00', info: 'Diberangkatkan dari Pelabuhan Tanjung Priok, Jakarta.', lat: -6.2088, lng: 106.8456 },
+                    { time: '2026-06-20 07:45', info: 'Melalui Gerbang Tol Cirebon, mengarah ke Semarang.', lat: -6.7220, lng: 108.5555 }
+                ]
+            },
+            {
+                id: '4',
+                sku: 'ID-ALT-901',
+                name: 'Excavator Komatsu PC200',
+                category: 'Alat Berat',
+                stock: 2,
+                status: 'Dipinjam',
+                address: 'Lokasi Proyek Infrastruktur, Bandung',
+                lat: -6.9175,
+                lng: 107.6191,
+                logs: [
+                    { time: '2026-06-01 10:00', info: 'Unit disewa untuk proyek jalan raya Bandung.', lat: -6.9175, lng: 107.6191 }
+                ]
+            }
+        ];
+
+        // Branding configuration state
+        let branding = JSON.parse(localStorage.getItem('inv_branding')) || {
+            name: 'InvTrack',
+            suffix: 'Pro',
+            tagline: 'Inventaris & GPS Tracking',
+            logoType: 'icon', // 'icon' or 'image'
+            logoIcon: 'fa-solid fa-boxes-stacked',
+            logoImg: '' // Stores Base64 or Image URL
+        };
+
+        // Global variables for Map handlers
+        let dashboardMap, trackingMap, fullMap, modalMap;
+        let dashboardMarkers = [];
+        let fullMarkers = [];
+        let modalMarker = null;
+        let qrcodeInstance = null;
+        let selectedTrackingItemId = null;
+        let itemToDeleteId = null; // Track item scheduled for deletion
+        let tempLogoImgBase64 = ''; // Temporarily holds uploaded image
+        
+        // Inline Status Edit State Helpers
+        let pendingStatusItemId = null;
+        let pendingStatusSelectElement = null;
+
+        // Save state to localStorage
+        function saveToStorage() {
+            localStorage.setItem('inv_items', JSON.stringify(inventory));
+            updateDashboardStats();
+        }
+
+        // Apply Custom Branding to Header and Footer
+        function applyBranding() {
+            // Apply Application Name in Header
+            const headerTitle = document.getElementById('header-title-container');
+            headerTitle.innerHTML = `${branding.name} <span class="text-indigo-400">${branding.suffix}</span>`;
+
+            // Apply Tagline in Header
+            document.getElementById('header-tagline-container').textContent = branding.tagline;
+
+            // Apply Logo inside Header
+            const logoContainer = document.getElementById('header-logo-container');
+            const footerLogoContainer = document.getElementById('footer-logo-container');
+            
+            if (branding.logoType === 'icon') {
+                logoContainer.innerHTML = `<i class="${branding.logoIcon} text-xl"></i>`;
+                footerLogoContainer.innerHTML = `<i class="${branding.logoIcon}"></i>`;
+            } else {
+                const imgSource = branding.logoImg || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=100&q=80';
+                logoContainer.innerHTML = `<img src="${imgSource}" class="w-full h-full object-cover" alt="Logo">`;
+                footerLogoContainer.innerHTML = `<img src="${imgSource}" class="w-full h-full object-cover" alt="Logo">`;
+            }
+
+            // Apply Branding to Footer
+            const footerTitle = document.getElementById('footer-title-container');
+            footerTitle.innerHTML = `${branding.name} ${branding.suffix}`;
+        }
+
+        // System notifications (Toast)
+        function showNotification(message, iconClass = 'fa-solid fa-circle-check', isError = false) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+            
+            msgEl.textContent = message;
+            iconEl.className = `${iconClass} ${isError ? 'text-rose-500' : 'text-indigo-400'}`;
+            
+            toast.className = `fixed top-20 right-4 z-[9999] transform translate-y-0 opacity-100 transition-all duration-300 pointer-events-auto`;
+            setTimeout(() => {
+                toast.className = `fixed top-20 right-4 z-[9999] transform translate-y-[-100px] opacity-0 transition-all duration-300 pointer-events-none`;
+            }, 3500);
+        }
+
+        // 2. Tab switcher navigation logic
+        function switchTab(tabId) {
+            // Hide all tab screens
+            document.querySelectorAll('main > section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            // Show the target screen
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            // Handle Desktop Tab Active Styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:bg-slate-800 hover:text-white";
+            });
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 bg-indigo-600 text-white";
+            }
+
+            // Handle Mobile Tab Active Styles
+            document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                btn.className = "mobile-tab-btn flex flex-col items-center space-y-1 text-slate-400";
+            });
+            const activeMobileBtn = document.getElementById(`m-btn-${tabId}`);
+            if (activeMobileBtn) {
+                activeMobileBtn.className = "mobile-tab-btn flex flex-col items-center space-y-1 text-indigo-400";
+            }
+
+            // Triggers to refresh Leaflet Maps dynamically when the container is finally visible
+            setTimeout(() => {
+                if (tabId === 'dashboard') {
+                    initDashboardMap();
+                } else if (tabId === 'map-view') {
+                    initFullMap();
+                } else if (tabId === 'tracker' && selectedTrackingItemId) {
+                    initTrackingMap();
+                }
+            }, 100);
+        }
+
+        // 3. Leaflet Maps Initializations
+        function initDashboardMap() {
+            if (dashboardMap) {
+                dashboardMap.invalidateSize();
+                return;
+            }
+            
+            // Centralize on Indonesia
+            dashboardMap = L.map('dash-map').setView([-2.5489, 118.0149], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(dashboardMap);
+
+            updateDashboardMapMarkers();
+        }
+
+        function updateDashboardMapMarkers() {
+            if (!dashboardMap) return;
+            // Clear existing markers
+            dashboardMarkers.forEach(m => dashboardMap.removeLayer(m));
+            dashboardMarkers = [];
+
+            inventory.forEach(item => {
+                const statusColor = item.status === 'Tersimpan' ? 'indigo' : (item.status === 'Transit' ? 'amber' : 'emerald');
+                const customIcon = L.divIcon({
+                    html: `<div class="bg-${statusColor}-600 text-white w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-lg shadow-black/20"><i class="fa-solid fa-box text-xs"></i></div>`,
+                    className: 'custom-div-icon',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+
+                const marker = L.marker([item.lat, item.lng], { icon: customIcon })
+                    .bindPopup(`
+                        <div class="p-1 font-sans text-xs">
+                            <b class="text-slate-800 text-sm block">${item.name}</b>
+                            <span class="bg-indigo-50 text-indigo-800 font-bold px-1.5 py-0.5 rounded text-[10px] mt-1 inline-block font-mono">${item.sku}</span>
+                            <span class="block mt-1 font-medium text-slate-500">📍 ${item.address}</span>
+                            <span class="block mt-1 font-bold text-slate-700">Stok: ${item.stock} Pcs</span>
+                            <button onclick="event.stopPropagation(); quickTrackItem('${item.id}')" class="mt-2 w-full bg-slate-900 text-white hover:bg-slate-800 py-1 rounded text-[10px] font-semibold transition">Track GPS</button>
+                        </div>
+                    `)
+                    .addTo(dashboardMap);
+                dashboardMarkers.push(marker);
+            });
+        }
+
+        function initFullMap() {
+            if (fullMap) {
+                fullMap.invalidateSize();
+                return;
+            }
+
+            fullMap = L.map('full-map').setView([-2.5489, 118.0149], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(fullMap);
+
+            updateFullMapMarkers();
+        }
+
+        function updateFullMapMarkers() {
+            if (!fullMap) return;
+            fullMarkers.forEach(m => fullMap.removeLayer(m));
+            fullMarkers = [];
+
+            inventory.forEach(item => {
+                const statusColor = item.status === 'Tersimpan' ? 'indigo' : (item.status === 'Transit' ? 'amber' : 'emerald');
+                const customIcon = L.divIcon({
+                    html: `<div class="bg-${statusColor}-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg"><i class="fa-solid fa-box text-sm"></i></div>`,
+                    className: 'custom-div-icon',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const marker = L.marker([item.lat, item.lng], { icon: customIcon })
+                    .bindPopup(`
+                        <div class="p-1 font-sans text-xs">
+                            <b class="text-slate-800 text-sm block">${item.name}</b>
+                            <span class="bg-indigo-50 text-indigo-800 font-bold px-1.5 py-0.5 rounded text-[10px] mt-1 inline-block font-mono">${item.sku}</span>
+                            <span class="block mt-1 text-slate-500 font-semibold">Grup: ${item.category}</span>
+                            <span class="block text-slate-500">📍 ${item.address}</span>
+                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                                <span class="font-bold text-slate-700">Stok: ${item.stock} pcs</span>
+                                <button onclick="quickTrackItem('${item.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold">Lacak Rinci</button>
+                            </div>
+                        </div>
+                    `)
+                    .addTo(fullMap);
+                fullMarkers.push(marker);
+            });
+        }
+
+        function initTrackingMap() {
+            const item = inventory.find(i => i.id === selectedTrackingItemId);
+            if (!item) return;
+
+            if (trackingMap) {
+                trackingMap.setView([item.lat, item.lng], 12);
+                trackingMap.invalidateSize();
+            } else {
+                trackingMap = L.map('track-map').setView([item.lat, item.lng], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(trackingMap);
+            }
+
+            // Hapus layer peta sebelumnya
+            trackingMap.eachLayer(layer => {
+                if (!!layer.toGeoJSON) { 
+                    trackingMap.removeLayer(layer);
+                }
+            });
+
+            // Muat ulang peta
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(trackingMap);
+
+            // Gambar jalur historis logs
+            if (item.logs && item.logs.length > 1) {
+                const points = item.logs.map(log => [log.lat, log.lng]);
+                L.polyline(points, { color: '#6366f1', weight: 4, dashArray: '5, 10' }).addTo(trackingMap);
+            }
+
+            // Gambar penanda posisi aktif dengan pulsasi
+            const pulseIcon = L.divIcon({
+                html: `<div class="relative flex items-center justify-center">
+                    <div class="absolute w-10 h-10 bg-indigo-500/30 rounded-full animate-ping"></div>
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg"><i class="fa-solid fa-location-arrow text-xs animate-pulse"></i></div>
+                </div>`,
+                className: 'custom-div-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+
+            L.marker([item.lat, item.lng], { icon: pulseIcon })
+                .bindPopup(`<b class="font-sans text-xs">${item.name} (Koordinat Terkalibrasi Akurat)</b>`)
+                .addTo(trackingMap);
+        }
+
+        function initModalMap() {
+            setTimeout(() => {
+                if (modalMap) {
+                    modalMap.invalidateSize();
+                    return;
+                }
+                
+                modalMap = L.map('modal-map').setView([-6.2088, 106.8456], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(modalMap);
+
+                // Klik event pada peta untuk set koordinat GPS
+                modalMap.on('click', function(e) {
+                    const lat = e.latlng.lat;
+                    const lng = e.latlng.lng;
+                    
+                    document.getElementById('form-lat').value = lat.toFixed(6);
+                    document.getElementById('form-lng').value = lng.toFixed(6);
+
+                    if (modalMarker) {
+                        modalMarker.setLatLng(e.latlng);
+                    } else {
+                        modalMarker = L.marker(e.latlng).addTo(modalMap);
+                    }
+                });
+            }, 200);
+        }
+
+        // 4. Status Customization & Helpers
+        function getUniqueStatuses() {
+            let statuses = ['Tersimpan', 'Transit', 'Dipinjam'];
+            inventory.forEach(item => {
+                if (!statuses.includes(item.status)) {
+                    statuses.push(item.status);
+                }
+            });
+            return statuses;
+        }
+
+        function getStatusStyleClass(status) {
+            if (status === 'Tersimpan') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+            if (status === 'Transit') return 'bg-amber-50 text-amber-700 border-amber-100';
+            if (status === 'Dipinjam') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            // Default styling for custom user defined statuses
+            return 'bg-purple-50 text-purple-700 border-purple-100';
+        }
+
+        function populateStatusFilterDropdown() {
+            const filterSelect = document.getElementById('filter-status');
+            const currentVal = filterSelect.value || 'all';
+            
+            let html = `<option value="all">Semua Status</option>`;
+            const uniqueStatuses = getUniqueStatuses();
+            uniqueStatuses.forEach(status => {
+                html += `<option value="${status}">${status}</option>`;
+            });
+
+            filterSelect.innerHTML = html;
+            // Restore previous choice if still available
+            if (uniqueStatuses.includes(currentVal) || currentVal === 'all') {
+                filterSelect.value = currentVal;
+            } else {
+                filterSelect.value = 'all';
+            }
+        }
+
+        function handleInlineStatusChange(itemId, selectElement) {
+            const val = selectElement.value;
+            if (val === '__custom__') {
+                pendingStatusItemId = itemId;
+                pendingStatusSelectElement = selectElement;
+                openStatusPromptModal();
+            } else {
+                updateItemStatusDirectly(itemId, val);
+            }
+        }
+
+        function updateItemStatusDirectly(itemId, newStatus) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            const oldStatus = item.status;
+            item.status = newStatus;
+
+            // Tambahkan entri logs otomatis
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            item.logs.push({
+                time: timeStr,
+                info: `Status diperbarui langsung dari daftar barang dari "${oldStatus}" menjadi "${newStatus}".`,
+                lat: item.lat,
+                lng: item.lng
+            });
+
+            saveToStorage();
+            renderInventory();
+            populateTrackerQuickList();
+            updateDashboardMapMarkers();
+            updateFullMapMarkers();
+
+            showNotification(`Status barang ${item.sku} diubah menjadi "${newStatus}"!`, "fa-solid fa-tag");
+        }
+
+        function openStatusPromptModal() {
+            document.getElementById('custom-status-input').value = '';
+            const modal = document.getElementById('status-prompt-modal');
+            const container = document.getElementById('status-prompt-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeStatusPromptModal() {
+            const modal = document.getElementById('status-prompt-modal');
+            const container = document.getElementById('status-prompt-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                // Balikkan select ke nilai lama jika batal
+                if (pendingStatusSelectElement && pendingStatusItemId) {
+                    const item = inventory.find(i => i.id === pendingStatusItemId);
+                    if (item) {
+                        pendingStatusSelectElement.value = item.status;
+                    }
+                }
+                pendingStatusItemId = null;
+                pendingStatusSelectElement = null;
+            }, 300);
+        }
+
+        function submitCustomStatus() {
+            const customVal = document.getElementById('custom-status-input').value.trim();
+            if (!customVal) {
+                showNotification("Nama status baru tidak boleh kosong!", "fa-solid fa-circle-exclamation", true);
+                return;
+            }
+
+            if (pendingStatusItemId) {
+                updateItemStatusDirectly(pendingStatusItemId, customVal);
+                closeStatusPromptModal();
+            }
+        }
+
+        function checkFormStatusCustom(val) {
+            const customContainer = document.getElementById('form-status-custom-container');
+            if (val === '__custom__') {
+                customContainer.classList.remove('hidden');
+                document.getElementById('form-status-custom').required = true;
+            } else {
+                customContainer.classList.add('hidden');
+                document.getElementById('form-status-custom').required = false;
+            }
+        }
+
+        // 5. Dashboard Stats Calculations
+        function updateDashboardStats() {
+            document.getElementById('stat-total').textContent = inventory.length;
+            document.getElementById('stat-moving').textContent = inventory.filter(i => i.status === 'Transit').length;
+            document.getElementById('stat-locations').textContent = new Set(inventory.map(i => `${i.lat.toFixed(4)},${i.lng.toFixed(4)}`)).size;
+            document.getElementById('stat-low').textContent = inventory.filter(i => i.stock < 5).length;
+        }
+
+        // 6. Render Inventory Table with sorting / searching
+        function renderInventory() {
+            populateStatusFilterDropdown();
+            
+            const tableBody = document.getElementById('inventory-table-body');
+            const searchQuery = document.getElementById('inventory-search').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value || 'all';
+
+            // Filter data
+            const filtered = inventory.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(searchQuery) || 
+                                      item.sku.toLowerCase().includes(searchQuery) ||
+                                      item.category.toLowerCase().includes(searchQuery);
+                const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-400">
+                            <div class="flex flex-col items-center justify-center space-y-2">
+                                <i class="fa-solid fa-folder-open text-3xl"></i>
+                                <span>Barang tidak ditemukan sesuai kriteria pencarian Anda.</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const uniqueStatuses = getUniqueStatuses();
+
+            tableBody.innerHTML = filtered.map(item => {
+                // Generate Dynamic Options for Status Selector
+                let optionsHtml = uniqueStatuses.map(status => {
+                    return `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`;
+                }).join('');
+                
+                // Tambahkan opsi pemicu status kustom
+                optionsHtml += `<option value="__custom__" class="text-indigo-600 font-bold">+ Kustom...</option>`;
+
+                const statusClass = getStatusStyleClass(item.status);
+
+                return `
+                    <tr class="hover:bg-slate-50 transition duration-150">
+                        <td class="py-4 px-6 font-medium text-slate-800">${item.name}</td>
+                        <td class="py-4 px-6 font-mono font-bold text-slate-500">${item.sku}</td>
+                        <td class="py-4 px-6 text-slate-500 font-semibold">${item.category}</td>
+                        <td class="py-4 px-6 text-center">
+                            <span class="px-2 py-1 rounded-md font-bold ${item.stock < 5 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'text-slate-700'}">${item.stock}</span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <!-- Inline Editable Select Dropdown -->
+                            <div class="relative inline-block">
+                                <select onchange="handleInlineStatusChange('${item.id}', this)" class="${statusClass} appearance-none pr-8 pl-3 py-1.5 rounded-full text-xs font-semibold border outline-none cursor-pointer font-sans transition-colors duration-150">
+                                    ${optionsHtml}
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400">
+                                    <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6 text-xs">
+                            <div class="flex flex-col">
+                                <span class="font-mono text-indigo-700 font-bold bg-indigo-50 px-2 py-1 rounded border border-indigo-100 w-max">${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</span>
+                                <span class="text-slate-400 mt-1 font-medium"><i class="fa-solid fa-map-pin mr-1"></i>${item.address}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="openBarcodeModal('${item.id}')" title="Tampilkan Barcode/QR" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">
+                                    <i class="fa-solid fa-barcode"></i>
+                                </button>
+                                <button onclick="quickTrackItem('${item.id}')" title="Lacak Posisi GPS" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                </button>
+                                <button onclick="openEditModal('${item.id}')" title="Ubah Aset" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteItem('${item.id}')" title="Hapus Aset" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 7. Barcode & QR Generator Modals Setup
+        function openBarcodeModal(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('barcode-modal-item-name').textContent = item.name;
+            document.getElementById('barcode-modal-sku').textContent = item.sku;
+
+            // Generate Traditional Code128 Barcode
+            JsBarcode("#barcode-svg", item.sku, {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true,
+                lineColor: "#0f172a",
+                fontSize: 12
+            });
+
+            // Generate Tracking-Rich QR Code yang menanamkan titik GPS presisi
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = ''; // Bersihkan QR sebelumnya
+
+            // Payload Barcode yang menampung titik koordinat GPS akurat dari barang
+            const trackingPayload = `SKU:${item.sku}|GPS:${item.lat.toFixed(6)},${item.lng.toFixed(6)}|Status:${item.status}`;
+            
+            // Tampilkan payload di modal agar user bisa melihat format string terenkripsi
+            document.getElementById('qrcode-payload-view').textContent = trackingPayload;
+
+            qrcodeInstance = new QRCode(qrContainer, {
+                text: trackingPayload,
+                width: 128,
+                height: 128,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            // Tampilkan modal
+            const modal = document.getElementById('barcode-modal');
+            const container = document.getElementById('barcode-modal-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeBarcodeModal() {
+            const modal = document.getElementById('barcode-modal');
+            const container = document.getElementById('barcode-modal-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function printLabels() {
+            window.print();
+        }
+
+        // 8. Simulated GPS & Tracking Updates logic
+        function quickTrackItem(itemId) {
+            selectedTrackingItemId = itemId;
+            switchTab('tracker');
+            trackItemById(itemId);
+        }
+
+        function populateTrackerQuickList() {
+            const container = document.getElementById('quick-track-list');
+            container.innerHTML = inventory.map(item => `
+                <button onclick="trackItemById('${item.id}')" class="w-full text-left p-2.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition duration-150 flex items-center justify-between group">
+                    <div class="truncate pr-2">
+                        <span class="block font-bold text-slate-700 text-xs truncate">${item.name}</span>
+                        <span class="block text-[10px] font-mono text-indigo-600 font-bold"><i class="fa-solid fa-satellite mr-1"></i>${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-indigo-600 transition"></i>
+                </button>
+            `).join('');
+        }
+
+        // Menelusuri barang lewat tombol pencarian manual SKU
+        function trackItemByInput() {
+            const searchVal = document.getElementById('tracking-input').value.trim().toUpperCase();
+            if (!searchVal) {
+                showNotification("Masukkan SKU atau ID terlebih dahulu!", "fa-solid fa-triangle-exclamation", true);
+                return;
+            }
+            
+            const item = inventory.find(i => i.sku.toUpperCase() === searchVal || i.id === searchVal);
+            if (item) {
+                trackItemById(item.id);
+                showNotification(`Barang ${item.sku} ditemukan di koordinat ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`, "fa-solid fa-circle-check");
+            } else {
+                showNotification("Aset SKU tidak ditemukan dalam database!", "fa-solid fa-magnifying-glass", true);
+            }
+        }
+
+        // Fungsi Dekoder untuk membaca kode mentah (Raw Barcode String) dan mengkalibrasi koordinat GPS-nya
+        function decodeAndTrackRawBarcode() {
+            const rawVal = document.getElementById('barcode-raw-input').value.trim();
+            if (!rawVal) {
+                showNotification("Masukkan string payload barcode terlebih dahulu!", "fa-solid fa-triangle-exclamation", true);
+                return;
+            }
+
+            // Parsing payload format: SKU:XXXX|GPS:Lat,Lng|Status:XXXX
+            try {
+                const parts = rawVal.split('|');
+                let sku = '';
+                let lat = 0;
+                let lng = 0;
+
+                parts.forEach(part => {
+                    const kv = part.split(':');
+                    if (kv[0].trim() === 'SKU') sku = kv[1].trim();
+                    if (kv[0].trim() === 'GPS') {
+                        const coords = kv[1].split(',');
+                        lat = parseFloat(coords[0].trim());
+                        lng = parseFloat(coords[1].trim());
+                    }
+                });
+
+                if (!sku || isNaN(lat) || isNaN(lng)) {
+                    throw new Error("Format tidak valid");
+                }
+
+                // Cari barang yang cocok di sistem atau buat barang sementara untuk visualisasi tracking GPS
+                let item = inventory.find(i => i.sku.toUpperCase() === sku.toUpperCase());
+                
+                if (item) {
+                    // Update koordinat GPS barang sesuai dengan yang dibaca di barcode tersebut (Sinkronisasi presisi)
+                    item.lat = lat;
+                    item.lng = lng;
+                    
+                    const now = new Date();
+                    const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                    item.logs.push({
+                        time: timeStr,
+                        info: `Sinkronisasi koordinat GPS akurat berhasil diekstrak melalui pemindaian barcode fisik.`,
+                        lat: lat,
+                        lng: lng
+                    });
+                    
+                    saveToStorage();
+                    renderInventory();
+                    trackItemById(item.id);
+                    updateDashboardMapMarkers();
+                    updateFullMapMarkers();
+                    
+                    showNotification(`Dekode Sukses! GPS terkalibrasi akurat ke ${lat}, ${lng}`, "fa-solid fa-satellite");
+                } else {
+                    showNotification(`SKU ${sku} tidak terdaftar di database, namun koordinat GPS barcode terbaca: ${lat}, ${lng}`, "fa-solid fa-triangle-exclamation", true);
+                }
+
+            } catch (e) {
+                showNotification("Gagal dekode barcode! Format tidak sesuai.", "fa-solid fa-circle-exclamation", true);
+            }
+        }
+
+        function trackItemById(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            selectedTrackingItemId = item.id;
+            
+            // Toggle visual screens
+            document.getElementById('tracking-result-placeholder').classList.add('hidden');
+            const resultCont = document.getElementById('tracking-result-content');
+            resultCont.classList.remove('hidden');
+            resultCont.classList.add('flex');
+
+            // Isi kolom teks
+            document.getElementById('track-name').textContent = item.name;
+            document.getElementById('track-sku').textContent = item.sku;
+            document.getElementById('track-category').textContent = item.category;
+            document.getElementById('track-stock').textContent = `${item.stock} Pcs`;
+            
+            // Set Koordinat dengan presisi tinggi desimal
+            document.getElementById('track-coords').textContent = `${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}`;
+            
+            // Sinkronkan input raw simulator di kiri dengan barcode payload yang aktif
+            document.getElementById('barcode-raw-input').value = `SKU:${item.sku}|GPS:${item.lat.toFixed(6)},${item.lng.toFixed(6)}|Status:${item.status}`;
+
+            // Status Tag colors
+            const statusEl = document.getElementById('track-status');
+            statusEl.textContent = item.status;
+            if (item.status === 'Tersimpan') {
+                statusEl.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100";
+            } else if (item.status === 'Transit') {
+                statusEl.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 animate-pulse";
+            } else {
+                statusEl.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100";
+            }
+
+            // Bangun Linimasa
+            const logsEl = document.getElementById('track-logs');
+            logsEl.innerHTML = item.logs.slice().reverse().map((log, index) => `
+                <div class="relative">
+                    <span class="absolute -left-6 top-1.5 flex items-center justify-center bg-white border-2 ${index === 0 ? 'border-indigo-600 w-4 h-4' : 'border-slate-300 w-3 h-3'} rounded-full"></span>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>${log.time}</span>
+                        <span class="font-mono text-[9px] text-indigo-600 font-bold">${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}</span>
+                    </div>
+                    <p class="text-xs font-semibold ${index === 0 ? 'text-indigo-600' : 'text-slate-600'} mt-1">${log.info}</p>
+                </div>
+            `).join('');
+
+            // Panggil peta untuk fokus ke titik GPS
+            setTimeout(() => {
+                initTrackingMap();
+            }, 100);
+        }
+
+        // Simulasi GPS pergeseran logistik real-time
+        function simulateGPSUpdate() {
+            if (!selectedTrackingItemId) return;
+            const item = inventory.find(i => i.id === selectedTrackingItemId);
+            if (!item) return;
+
+            // Geser sedikit kordinat secara presisi
+            const latShift = (Math.random() - 0.5) * 0.015;
+            const lngShift = (Math.random() - 0.5) * 0.015;
+            
+            item.lat += latShift;
+            item.lng += lngShift;
+            item.status = 'Transit';
+
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            item.logs.push({
+                time: timeStr,
+                info: `GPS bergeser (Simulasi Bergerak) ke titik presisi baru: ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}`,
+                lat: item.lat,
+                lng: item.lng
+            });
+
+            saveToStorage();
+            renderInventory();
+            trackItemById(item.id);
+            updateDashboardMapMarkers();
+            updateFullMapMarkers();
+            
+            showNotification(`GPS Aset ${item.sku} Bergerak ke Posisi Baru!`, "fa-solid fa-satellite-dish");
+        }
+
+        function simulateScan() {
+            const laser = document.getElementById('scanner-laser');
+            laser.classList.remove('hidden');
+            
+            showNotification("Membaca data sensor barcode...", "fa-solid fa-spinner animate-spin");
+
+            setTimeout(() => {
+                laser.classList.add('hidden');
+                if (inventory.length === 0) {
+                    showNotification("Simulasi gagal: Inventaris kosong.", "fa-solid fa-xmark", true);
+                    return;
+                }
+                
+                // Ambil aset acak
+                const randomItem = inventory[Math.floor(Math.random() * inventory.length)];
+                
+                // Sinkronkan tracking map secara presisi berdasarkan GPS barcode barang tersebut
+                trackItemById(randomItem.id);
+                showNotification(`Barcode ${randomItem.sku} Berhasil Dipindai! GPS Terkalibrasi.`, "fa-solid fa-barcode");
+            }, 1500);
+        }
+
+        // 9. CRUD & Add/Edit Modal Controls
+        function openAddModal() {
+            document.getElementById('item-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-title').textContent = 'Tambah Barang Inventaris Baru';
+            
+            document.getElementById('form-lat').value = '-6.208800';
+            document.getElementById('form-lng').value = '106.845600';
+
+            // Populate Form Status Select
+            const formStatus = document.getElementById('form-status');
+            formStatus.value = 'Tersimpan';
+            checkFormStatusCustom('Tersimpan');
+
+            if (modalMarker) {
+                modalMarker.setLatLng([-6.2088, 106.8456]);
+            }
+
+            const modal = document.getElementById('inventory-modal');
+            const container = document.getElementById('modal-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+
+            initModalMap();
+        }
+
+        function openEditModal(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('modal-title').textContent = 'Ubah Informasi Barang';
+            document.getElementById('form-sku').value = item.sku;
+            document.getElementById('form-name').value = item.name;
+            document.getElementById('form-category').value = item.category;
+            document.getElementById('form-stock').value = item.stock;
+            
+            // Set Form Status (Check if custom or standard option)
+            const formStatus = document.getElementById('form-status');
+            const standardOptions = ['Tersimpan', 'Transit', 'Dipinjam'];
+            if (standardOptions.includes(item.status)) {
+                formStatus.value = item.status;
+                checkFormStatusCustom(item.status);
+            } else {
+                formStatus.value = '__custom__';
+                checkFormStatusCustom('__custom__');
+                document.getElementById('form-status-custom').value = item.status;
+            }
+
+            document.getElementById('form-address').value = item.address;
+            document.getElementById('form-lat').value = item.lat.toFixed(6);
+            document.getElementById('form-lng').value = item.lng.toFixed(6);
+
+            const modal = document.getElementById('inventory-modal');
+            const container = document.getElementById('modal-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+
+            initModalMap();
+            setTimeout(() => {
+                if (modalMap) {
+                    modalMap.setView([item.lat, item.lng], 12);
+                    if (modalMarker) {
+                        modalMarker.setLatLng([item.lat, item.lng]);
+                    } else {
+                        modalMarker = L.marker([item.lat, item.lng]).addTo(modalMap);
+                    }
+                }
+            }, 300);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('inventory-modal');
+            const container = document.getElementById('modal-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function generateRandomSKU() {
+            const randomID = Math.floor(100 + Math.random() * 900);
+            document.getElementById('form-sku').value = `ID-GEN-${randomID}`;
+        }
+
+        function getCurrentGPSLocation() {
+            if ("geolocation" in navigator) {
+                showNotification("Mengakses sensor GPS perangkat...", "fa-solid fa-spinner animate-spin");
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    document.getElementById('form-lat').value = lat.toFixed(6);
+                    document.getElementById('form-lng').value = lng.toFixed(6);
+
+                    if (modalMap) {
+                        modalMap.setView([lat, lng], 13);
+                        if (modalMarker) {
+                            modalMarker.setLatLng([lat, lng]);
+                        } else {
+                            modalMarker = L.marker([lat, lng]).addTo(modalMap);
+                        }
+                    }
+                    showNotification("GPS Perangkat Berhasil Disematkan!", "fa-solid fa-location-crosshairs");
+                }, error => {
+                    showNotification("Gagal mengakses GPS. Pastikan izin lokasi aktif.", "fa-solid fa-triangle-exclamation", true);
+                });
+            } else {
+                showNotification("Sensor GPS tidak didukung di browser ini.", "fa-solid fa-triangle-exclamation", true);
+            }
+        }
+
+        function saveItem(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('edit-id').value;
+            const sku = document.getElementById('form-sku').value.trim();
+            const name = document.getElementById('form-name').value.trim();
+            const category = document.getElementById('form-category').value;
+            const stock = parseInt(document.getElementById('form-stock').value);
+            
+            // Get Status from select or custom text input
+            let status = document.getElementById('form-status').value;
+            if (status === '__custom__') {
+                status = document.getElementById('form-status-custom').value.trim() || 'Kustom';
+            }
+
+            const address = document.getElementById('form-address').value.trim();
+            const lat = parseFloat(document.getElementById('form-lat').value);
+            const lng = parseFloat(document.getElementById('form-lng').value);
+
+            if (editId) {
+                // Edit existing
+                const index = inventory.findIndex(i => i.id === editId);
+                if (index !== -1) {
+                    const oldItem = inventory[index];
+                    const latLngChanged = oldItem.lat !== lat || oldItem.lng !== lng;
+                    const statusChanged = oldItem.status !== status;
+                    
+                    inventory[index] = {
+                        ...oldItem,
+                        sku,
+                        name,
+                        category,
+                        stock,
+                        status,
+                        address,
+                        lat,
+                        lng
+                    };
+
+                    // Tambahkan entri log jika posisi koordinat atau status berubah
+                    if (latLngChanged || statusChanged) {
+                        const now = new Date();
+                        const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                        let logMsg = '';
+                        if (latLngChanged && statusChanged) {
+                            logMsg = `Status diubah ke "${status}" & koordinat diperbarui ke: ${lat.toFixed(6)}, ${lng.toFixed(6)}.`;
+                        } else if (latLngChanged) {
+                            logMsg = `Koordinat GPS diperbarui ke: ${lat.toFixed(6)}, ${lng.toFixed(6)}.`;
+                        } else {
+                            logMsg = `Status diubah dari "${oldItem.status}" menjadi "${status}".`;
+                        }
+                        
+                        inventory[index].logs.push({
+                            time: timeStr,
+                            info: logMsg,
+                            lat,
+                            lng
+                        });
+                    }
+
+                    showNotification("Data barang berhasil diperbarui!");
+                }
+            } else {
+                // Add new
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                
+                const newItem = {
+                    id: String(Date.now()),
+                    sku,
+                    name,
+                    category,
+                    stock,
+                    status,
+                    address,
+                    lat,
+                    lng,
+                    logs: [
+                        { time: timeStr, info: "Registrasi barang baru di sistem inventaris.", lat, lng }
+                    ]
+                };
+
+                inventory.push(newItem);
+                showNotification("Aset ditambahkan dengan sensor GPS!");
+            }
+
+            saveToStorage();
+            closeModal();
+            renderInventory();
+            populateTrackerQuickList();
+            updateDashboardMapMarkers();
+            updateFullMapMarkers();
+        }
+
+        // Delete Modal Trigger
+        function deleteItem(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            itemToDeleteId = itemId;
+            document.getElementById('delete-item-name').textContent = `"${item.name}" (${item.sku})`;
+
+            const modal = document.getElementById('delete-modal');
+            const container = document.getElementById('delete-modal-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            const container = document.getElementById('delete-modal-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+            itemToDeleteId = null;
+        }
+
+        document.getElementById('confirm-delete-btn').onclick = function() {
+            if (!itemToDeleteId) return;
+
+            inventory = inventory.filter(i => i.id !== itemToDeleteId);
+            saveToStorage();
+            renderInventory();
+            populateTrackerQuickList();
+            updateDashboardMapMarkers();
+            updateFullMapMarkers();
+            
+            showNotification("Barang berhasil dihapus.", "fa-solid fa-trash-can");
+            closeDeleteModal();
+        };
+
+        // Branding Customization
+        function openBrandingModal() {
+            document.getElementById('brand-name').value = branding.name;
+            document.getElementById('brand-suffix').value = branding.suffix;
+            document.getElementById('brand-tagline').value = branding.tagline;
+            document.getElementById('brand-logo-icon').value = branding.logoIcon;
+            document.getElementById('brand-logo-url').value = branding.logoType === 'image' ? branding.logoImg : '';
+            
+            const radios = document.getElementsByName('logo-type');
+            for (let radio of radios) {
+                if (radio.value === branding.logoType) {
+                    radio.checked = true;
+                }
+            }
+
+            tempLogoImgBase64 = branding.logoType === 'image' ? branding.logoImg : '';
+            toggleLogoForm();
+
+            const modal = document.getElementById('branding-modal');
+            const container = document.getElementById('branding-modal-container');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeBrandingModal() {
+            const modal = document.getElementById('branding-modal');
+            const container = document.getElementById('branding-modal-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function toggleLogoForm() {
+            const selectedType = document.querySelector('input[name="logo-type"]:checked').value;
+            const iconSection = document.getElementById('logo-icon-section');
+            const imageSection = document.getElementById('logo-image-section');
+
+            if (selectedType === 'icon') {
+                iconSection.classList.remove('hidden');
+                imageSection.classList.add('hidden');
+            } else {
+                iconSection.classList.add('hidden');
+                imageSection.classList.remove('hidden');
+            }
+        }
+
+        function selectPresetIcon(iconClass) {
+            document.getElementById('brand-logo-icon').value = iconClass;
+            showNotification(`Ikon dipilih: ${iconClass}`, "fa-solid fa-circle-info");
+        }
+
+        function handleBrandingImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 1.5 * 1024 * 1024) {
+                showNotification("File terlalu besar (Maksimal 1.5 MB).", "fa-solid fa-triangle-exclamation", true);
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tempLogoImgBase64 = e.target.result;
+                showNotification("Gambar berhasil diunggah!", "fa-solid fa-image");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveBranding(event) {
+            event.preventDefault();
+
+            const selectedType = document.querySelector('input[name="logo-type"]:checked').value;
+            const name = document.getElementById('brand-name').value.trim();
+            const suffix = document.getElementById('brand-suffix').value.trim();
+            const tagline = document.getElementById('brand-tagline').value.trim();
+            const icon = document.getElementById('brand-logo-icon').value.trim() || 'fa-solid fa-boxes-stacked';
+            const urlInput = document.getElementById('brand-logo-url').value.trim();
+
+            let finalImage = branding.logoImg;
+            if (selectedType === 'image') {
+                finalImage = tempLogoImgBase64 || urlInput || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=100&q=80';
+            }
+
+            branding = {
+                name,
+                suffix,
+                tagline,
+                logoType: selectedType,
+                logoIcon: icon,
+                logoImg: finalImage
+            };
+
+            localStorage.setItem('inv_branding', JSON.stringify(branding));
+            applyBranding();
+            closeBrandingModal();
+            showNotification("Branding berhasil disimpan!", "fa-solid fa-sliders");
+        }
+
+        // Generate Dummy Data
+        function seedDummyData() {
+            const dummy = [
+                {
+                    id: 'd1',
+                    sku: 'ID-LAP-910',
+                    name: 'MacBook Pro M3 Max 16"',
+                    category: 'Elektronik',
+                    stock: 5,
+                    status: 'Tersimpan',
+                    address: 'Gudang Ritel Surabaya',
+                    lat: -7.250445,
+                    lng: 112.750822,
+                    logs: [
+                        { time: '2026-06-15 08:00', info: 'Barang didaftarkan di sistem.', lat: -7.250445, lng: 112.750822 }
+                    ]
+                },
+                {
+                    id: 'd2',
+                    sku: 'ID-KOT-402',
+                    name: 'Sofa Kantor Ergonomis Premium',
+                    category: 'Perabot Kantor',
+                    stock: 3,
+                    status: 'Tersimpan',
+                    address: 'Gudang Furnitur Semarang',
+                    lat: -6.966700,
+                    lng: 110.416700,
+                    logs: [
+                        { time: '2026-06-12 11:30', info: 'Diterima oleh divisi logistik.', lat: -6.966700, lng: 110.416700 }
+                    ]
+                },
+                {
+                    id: 'd3',
+                    sku: 'ID-TRK-707',
+                    name: 'Aset Konstruksi Baja Sipil',
+                    category: 'Logistik',
+                    stock: 120,
+                    status: 'Transit',
+                    address: 'Melintasi Area Selat Sunda',
+                    lat: -5.889211,
+                    lng: 105.783622,
+                    logs: [
+                        { time: '2026-06-19 12:00', info: 'Bongkar muat Pelabuhan Bakauheni.', lat: -5.889211, lng: 105.783622 }
+                    ]
+                }
+            ];
+
+            inventory = [...inventory, ...dummy];
+            saveToStorage();
+            renderInventory();
+            populateTrackerQuickList();
+            updateDashboardMapMarkers();
+            updateFullMapMarkers();
+            showNotification("Berhasil memuat data simulasi tambahan!");
+        }
+
+        // Initialize App
+        window.onload = function() {
+            applyBranding();
+            updateDashboardStats();
+            renderInventory();
+            populateTrackerQuickList();
+            initDashboardMap();
+        };
+    </script>
+</body>
+</html>
